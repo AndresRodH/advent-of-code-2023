@@ -1,0 +1,10 @@
+{
+	"name": "advent-of-code-2023",
+	"type": "module",
+	"devDependencies": {
+		"@biomejs/biome": "1.4.1",
+		"bun-types": "latest",
+		"typescript": "5.3.2"
+	}
+}
+
