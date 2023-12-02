@@ -1,6 +1,10 @@
 {
 	"name": "advent-of-code-2023",
 	"type": "module",
+	"scripts": {
+		"format": "biome format --write .",
+		"lint": "biome check --apply ."
+	},
 	"devDependencies": {
 		"@biomejs/biome": "1.4.1",
 		"bun-types": "latest",
