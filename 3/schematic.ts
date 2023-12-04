@@ -1,6 +1,14 @@
 type SymbolKey = `${number},${number}`;
 type NumberKey = `${number}:${number},${number}`;
 
+type Part = {
+	partNumber: number;
+	coordinates: {
+		x: { start: number; end: number };
+		y: number;
+	};
+};
+
 export class Schematic {
 	readonly input: string;
 	readonly #entries: string[];
@@ -15,6 +23,10 @@ export class Schematic {
 		this.totalEntries = this.#entries.length;
 		this.entryLength = this.#entries[0].length;
 
+		this.#parseInput();
+	}
+
+	#parseInput() {
 		for (let y = 0; y < this.#entries.length; y++) {
 			const line = this.#entries[y];
 
@@ -86,66 +98,82 @@ export class Schematic {
 		return Array.from({ length: end - start + 1 }).map((_, i) => start + i);
 	}
 
-	#hasNeighbourSymbol({
-		x,
-		y,
-	}: { x: { start: number; end: number }; y: number }) {
+	#getNeighborCoordinates(coordinates: { x: number; y: number }): {
+		x: number;
+		y: number;
+	}[];
+	#getNeighborCoordinates(coordinates: {
+		x: { start: number; end: number };
+		y: number;
+	}): { x: number; y: number }[];
+	#getNeighborCoordinates(coordinates: {
+		x: number | { start: number; end: number };
+		y: number;
+	}): { x: number; y: number }[] {
+		const y = coordinates.y;
+		const x =
+			typeof coordinates.x === "number"
+				? { start: coordinates.x, end: coordinates.x }
+				: coordinates.x;
 		const up = y - 1 < 0 ? null : y - 1;
 		const left = x.start - 1 < 0 ? null : x.start - 1;
 		const right = x.end + 1 > this.entryLength - 1 ? null : x.end + 1;
 		const down = y + 1 > this.totalEntries - 1 ? null : y + 1;
 
-		let neighbours: { x: number; y: number }[] = [];
+		let neighbors: { x: number; y: number }[] = [];
 
 		// diagonal up left
 		if (left && up) {
-			neighbours.push({ x: left, y: up });
+			neighbors.push({ x: left, y: up });
 		}
 		// top range
 		if (up) {
 			const range = this.#range(x.start, x.end).map((x) => ({ x, y: up }));
-			neighbours = [...neighbours, ...range];
+			neighbors = [...neighbors, ...range];
 		}
 		// diagonal up right
 		if (right && up) {
-			neighbours.push({ x: right, y: up });
+			neighbors.push({ x: right, y: up });
 		}
 		// left
 		if (left) {
-			neighbours.push({ x: left, y });
+			neighbors.push({ x: left, y });
 		}
 		// right
 		if (right) {
-			neighbours.push({ x: right, y });
+			neighbors.push({ x: right, y });
 		}
 		// diagonal down left
 		if (left && down) {
-			neighbours.push({ x: left, y: down });
+			neighbors.push({ x: left, y: down });
 		}
 		// bottom range
 		if (down) {
 			const range = this.#range(x.start, x.end).map((x) => ({ x, y: down }));
-			neighbours = [...neighbours, ...range];
+			neighbors = [...neighbors, ...range];
 		}
 		// diagonal down right
 		if (right && down) {
-			neighbours.push({ x: right, y: down });
+			neighbors.push({ x: right, y: down });
 		}
 
-		return neighbours.some(({ x, y }) => {
+		return neighbors;
+	}
+
+	#hasNeighborSymbol({
+		x,
+		y,
+	}: { x: { start: number; end: number }; y: number }) {
+		const neighbors = this.#getNeighborCoordinates({ x, y });
+
+		return neighbors.some(({ x, y }) => {
 			const symbolKey = this.#getSymbolKey({ x, y });
 			return this.#symbols.has(symbolKey);
 		});
 	}
 
 	get parts() {
-		const parts: {
-			partNumber: number;
-			coordinates: {
-				x: { start: number; end: number };
-				y: number;
-			};
-		}[] = [];
+		const parts: Part[] = [];
 
 		for (const [key, value] of this.#numbers.entries()) {
 			const [xRange, yString] = key.split(",");
@@ -154,7 +182,7 @@ export class Schematic {
 			const x = { start: Number(xStart), end: Number(xEnd) };
 			const y = Number(yString);
 
-			if (this.#hasNeighbourSymbol({ x, y })) {
+			if (this.#hasNeighborSymbol({ x, y })) {
 				parts.push({
 					coordinates: { x, y },
 					partNumber: value,
@@ -163,5 +191,39 @@ export class Schematic {
 		}
 
 		return parts;
+	}
+
+	get #asteriskLocations() {
+		const asteriskLocations: { x: number; y: number }[] = [];
+
+		for (const [key, symbol] of this.#symbols.entries()) {
+			if (symbol !== "*") continue;
+
+			const [x, y] = key.split(",").map(Number);
+			asteriskLocations.push({ x, y });
+		}
+
+		return asteriskLocations;
+	}
+
+	get gears() {
+		const parts = this.parts;
+		const asteriskLocations = this.#asteriskLocations;
+		const gears: [Part, Part][] = [];
+
+		for (const { x, y } of asteriskLocations) {
+			const neighboringParts = parts.filter((part) => {
+				const neighbors = this.#getNeighborCoordinates(part.coordinates);
+				return neighbors.some(
+					(neighbor) => neighbor.x === x && neighbor.y === y,
+				);
+			});
+
+			if (neighboringParts.length === 2) {
+				gears.push(neighboringParts as [Part, Part]);
+			}
+		}
+
+		return gears;
 	}
 }
