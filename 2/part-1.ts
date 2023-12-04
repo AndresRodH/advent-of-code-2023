@@ -12,23 +12,13 @@ const result = input
 		const game = new Game(id);
 
 		for (const entries of setsPart.split(";")) {
-			const set: GameSet = {
-				red: 0,
-				blue: 0,
-				green: 0,
-			};
+			const set = new GameSet();
 
 			for (const entry of entries.split(",")) {
 				const [amount, color] = entry.trim().split(" ");
 
-				if (color === "red") {
-					set.red = Number(amount);
-				}
-				if (color === "blue") {
-					set.blue = Number(amount);
-				}
-				if (color === "green") {
-					set.green = Number(amount);
+				if (game.isValidColor(color)) {
+					set[color] = Number(amount);
 				}
 			}
 
