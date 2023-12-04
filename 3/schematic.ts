@@ -139,19 +139,26 @@ export class Schematic {
 	}
 
 	get parts() {
-		const parts: number[] = [];
+		const parts: {
+			partNumber: number;
+			coordinates: {
+				x: { start: number; end: number };
+				y: number;
+			};
+		}[] = [];
 
 		for (const [key, value] of this.#numbers.entries()) {
-			const [xRange, y] = key.split(",");
+			const [xRange, yString] = key.split(",");
 			const [xStart, xEnd] = xRange.split(":");
 
-			if (
-				this.#hasNeighbourSymbol({
-					x: { start: Number(xStart), end: Number(xEnd) },
-					y: Number(y),
-				})
-			) {
-				parts.push(value);
+			const x = { start: Number(xStart), end: Number(xEnd) };
+			const y = Number(yString);
+
+			if (this.#hasNeighbourSymbol({ x, y })) {
+				parts.push({
+					coordinates: { x, y },
+					partNumber: value,
+				});
 			}
 		}
 
